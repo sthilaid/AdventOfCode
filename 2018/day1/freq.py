@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+import io
+import sys
+
 def part1(inputfile):
     freq = 0
     with open(inputfile, "r") as file:
