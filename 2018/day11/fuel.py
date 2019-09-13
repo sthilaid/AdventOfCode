@@ -45,26 +45,29 @@ def part2(input):
     bestCellPower           = -sys.maxsize-1
     bestCellSize            = 0
     bestCellX, bestCellY    = 0,0
-    for y in range(1, 301):
-        for x in range(1, 301):
-            for size in range(1,301):
-                # todo build over previous iteration data...
-                cellSquarePowerLevel = 0
-                for dy in range(size):
-                    for dx in range(size):
-                        cellX, cellY = x+dx, y+dy
-                        if cellX > 300 or cellY > 300:
-                            cellSquarePowerLevel += -sys.maxsize-1
-                            break
-                        else:
-                            cellSquarePowerLevel += powerLevels[cellX + cellY*301]
-                if cellSquarePowerLevel > bestCellPower:
-                    bestCellPower           = cellSquarePowerLevel
-                    bestCellSize            = size
-                    bestCellX, bestCellY    = x, y
+    prevIteration           = [0] * 301 * 301
+    for size in range(1,301):
+        for y in range(1, 301):
+            for x in range(1, 301):
+                if x+size > 300 or y+size > 300:
+                    prevIteration[x + y*301] = -sys.maxsize-1
+                else:
+                    cellSquarePowerLevel = prevIteration[x+y*301]
+                    for dy in range(size-1): # note: last element included in dx
+                        cellX, cellY = x+size-1, y+dy
+                        cellSquarePowerLevel += powerLevels[cellX + cellY*301]
+                    cellSquarePowerLevel += sum(powerLevels[x+(y+size-1)*301:x+size+(y+size-1)*301])
+
+                    prevIteration[x + y*301]    = cellSquarePowerLevel
+                    if cellSquarePowerLevel > bestCellPower:
+                        bestCellPower           = cellSquarePowerLevel
+                        bestCellSize            = size
+                        bestCellX, bestCellY    = x, y
+
+        print("[%d] best cell of grid size %dx%d is %d,%d with %d total power"
+              % (size, bestCellSize, bestCellSize, bestCellX, bestCellY, bestCellPower))
     print("[Part2] Best fuel cell located at %d,%d with %d total power of size %d"
           % (bestCellX, bestCellY, bestCellPower, bestCellSize))
-
 
 def main():
     input = 9995 # my input for this problem instance
