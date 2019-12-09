@@ -80,7 +80,7 @@ def part1and2(inputfile):
 
 def main():
     if (len(sys.argv) != 2):
-        print("usage: freq [inputfile]")
+        print("usage: lights [inputfile]")
         return
 
     part1and2(sys.argv[1])

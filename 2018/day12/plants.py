@@ -47,7 +47,7 @@ def part1(lines):
                 newState.append(newValue)
                 if p < 0:
                     originIndex += 1
-            elif p >= 0 and p < len(state):
+            elif p >= 0 and p <= originIndex:
                 originIndex -= 1
         state = newState
         plantCount = count(state, originIndex)
