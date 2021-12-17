@@ -1,0 +1,31 @@
+
+(setq data '("abcefg" "cf" "acdeg" "acdfg" "bcdf" "abdfg" "abdefg" "acf" "abcdefg" "abcdfg"))
+
+(defun parse-tokenized-input (tokens)
+  (mapcar (lambda (tokens)
+            (let ((data '())
+                  (input '())
+                  (found-seperator? nil))
+              (break)
+              (dolist (token tokens)
+                (cond ((string= token "|")  (setq found-seperator t))
+                      (found-seperator?     (push token input))
+                      (t                    (push token data))))
+              (if (not (= (length data) 10))
+                  (error (format "invalid data: %s" data)))
+              (if (not (= (length input) 4))
+                  (error (format "invalid data: " input)))
+              (list data input)))
+          tokens))
+
+(defun solve (input-file)
+  (let ((input-string (if (file-exists-p input-file)
+                          (with-temp-buffer
+                            (insert-file-contents input-file)
+                            (buffer-string))
+                        (message (concat "Could not find file " input-file)))))
+    (let ((tokens (mapcar (lambda (s) (split-string s " ")) (split-string input-string "\n"))))
+      (parse-tokenized-input tokens))))
+
+(pp (solve "day8-test-input.txt"))
+(solve "day8-input.txt")
