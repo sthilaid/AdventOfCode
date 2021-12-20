@@ -1,0 +1,53 @@
+(defconst corrupted-score-table '((?\) 3) (?\] 57) (?} 1197) (?> 25137)))
+(defconst autocomplete-score-table '((?\) 1) (?\] 2) (?} 3) (?> 4)))
+(defconst token-table '((?\( ?\)) (?\[ ?\]) (?{ ?}) (?< ?>)))
+
+(defun parse-chunk (str)
+  (catch 'incomplete-chunk
+   (catch 'corrupted-chunk
+     (let ((expected-token-stack '()))
+       (seq-doseq (c str)
+         (let ((token (assq c token-table)))
+           (cond (token                                (push (second token) expected-token-stack))
+                 ((eq c (first expected-token-stack))  (pop expected-token-stack))
+                 (t                                    (throw 'corrupted-chunk `(corrupted-chunk ,c))))))
+       (if (not (seq-empty-p expected-token-stack))
+           (throw 'incomplete-chunk `(incomplete-chunk ,expected-token-stack))
+         t)))))
+
+(defun solve-part1 (lines)
+  (let ((results (seq-map (lambda (line) (parse-chunk line)) lines)))
+    (seq-reduce (lambda (score res) (let* ((score-entry (assq (second res) corrupted-score-table)))
+                                      (if (not score-entry) (error "token %s not found in score-table!" (second res)))
+                                      (+ score (second score-entry))))
+                (seq-filter (lambda (res) (and (listp res) (eq (first res) 'corrupted-chunk))) results)
+                0)))
+
+(defun solve-part2 (lines)
+  (let ((results (seq-map (lambda (line) (parse-chunk line)) lines)))
+    (let* ((incomplete-line-results (seq-filter (lambda (res) (and (listp res) (eq (first res) 'incomplete-chunk))) results))
+           (autocomplete-line-values (seq-map (lambda (res)
+                                                (let ((missing-tokens-values (seq-map (lambda (missing-token)
+                                                                                        (let* ((score-entry (assq missing-token autocomplete-score-table)))
+                                                                                          (if (not score-entry) (error "token %s not found in score-table!" missing-token))
+                                                                                          (second score-entry)))
+                                                                                      (second res))))
+                                                  (seq-reduce (lambda (score score-value) (+ (* score 5) score-value))
+                                                              missing-tokens-values
+                                                              0)))
+                                              incomplete-line-results))
+           (sorted-line-values (sort autocomplete-line-values '<)))
+      (seq-elt sorted-line-values (/ (length sorted-line-values) 2)))))
+
+(defun solve (input-file)
+  (let ((lines (if (file-exists-p input-file)
+                   (with-temp-buffer
+                     (insert-file-contents input-file)
+                     (split-string (buffer-string) "\n"))
+                 (message (concat "Could not find file " input-file)))))
+    (let* ((part1 (solve-part1 lines))
+           (part2 (solve-part2 lines)))
+      (message "part1: %s | part2: %s" part1 part2))))
+
+(solve "day10-test-input.txt")
+(solve "day10-input.txt")
