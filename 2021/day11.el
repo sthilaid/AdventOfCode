@@ -1,3 +1,5 @@
+(defconst bignum 1000)
+
 (defun get-neighbours (i)
   (defmacro try-add-neighbour (dx dy)
     (let ((xsym (gensym)) (ysym (gensym)))
@@ -14,10 +16,11 @@
     (try-add-neighbour -1 0)
     (try-add-neighbour -1 -1)
     (try-add-neighbour -1 1)
-    (try-add-neighbour 1 -1)))
+    (try-add-neighbour 1 -1)
+    neighbours))
 
-(defun print-grid (grid flash-count)
-  (let ((str ""))
+(defun print-grid (grid flash-count sim-index)
+  (let ((str (format "---------------------------\nSim Iteration %d\n\n" sim-index)))
     (dotimes (y 10)
       (dotimes (x 10)
         (let* ((index (+ x (* y 10)))
@@ -29,7 +32,6 @@
       (message str))))
 
 (defun simulation-step (grid)
-  (defconst bignum 1000)
   (defmacro get-grid (index) `(aref grid ,index))
   (defmacro inc-grid (index) `(aset grid ,index (1+ (aref grid ,index))))
   (defmacro try-flash-grid (index) (let ((value-sym (gensym)))
@@ -55,18 +57,23 @@
       (let ((power (aref grid i)))
         (if (>= power bignum)
             (aset grid i 0))))
-    (print-grid grid flash-count)
     flash-count))
 
 (defun solve-part1 (grid)
   (let ((total-flash-count 0))
-    (dotimes (_ 100)
+    (dotimes (sim-step-index 100)
       (let ((flash-count (simulation-step grid)))
+        ;;(print-grid grid flash-count (1+ sim-step-index))
         (setq total-flash-count (+ total-flash-count flash-count))))
     total-flash-count))
 
 (defun solve-part2 (grid)
-  0)
+  (catch 'done
+    (dotimes (sim-step-index 10000)
+      (let ((flash-count (simulation-step grid)))
+        (if (= flash-count 100)
+            (throw 'done (1+ sim-step-index)))))
+    10000))
 
 (defun solve (input-file)
   (let* ((grid (make-vector 100 0))
@@ -82,8 +89,9 @@
                                        (setq i (1+ i)))))
                           (forward-char))))
                   (message (concat "Could not find file " input-file)))))
-    (let* ((part1 (solve-part1 grid))
-           (part2 (solve-part2 grid)))
+    (let* ((grid-copy (copy-sequence grid))
+           (part1 (solve-part1 grid))
+           (part2 (solve-part2 grid-copy)))
       (message "part1: %s | part2: %s" part1 part2))))
 
 (solve "day11-test-input.txt")
