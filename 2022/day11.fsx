@@ -62,15 +62,18 @@ let applyTest m worry =
 
 let appendItem m item = {items=(item :: m.items); op=m.op; test=m.test; positive=m.positive; negative=m.negative}
 let purgeItems m = {items=[]; op=m.op; test=m.test; positive=m.positive; negative=m.negative}
-let printMonkeys monkeys =
-    monkeys |> List.mapi (fun i monkey ->
-                         printfn "monkey %d - items: %A" i monkey.items
-                         monkey)
+let printMonkeys (counts, monkeys) =
+    List.mapi2 (fun i monkey count ->
+                printfn "monkey %d - items: %A - count: %d" i monkey.items count)
+               monkeys
+               counts
+        |> ignore
+    (counts, monkeys)
     
 let evalMonkey monkeys (m_index, m) =
     List.fold (fun monkeys item ->
-               printfn "%d - %d ---------------------------------------" m_index item
-               printMonkeys monkeys |> ignore
+               // printfn "%d - %d ---------------------------------------" m_index item
+               // printMonkeys ([], monkeys) |> ignore
                let newItemWorry = m.op item |> (fun x -> x/3) |> int
                let nextMonkey = applyTest m newItemWorry
                monkeys |> List.mapi (fun i monkey ->
@@ -81,19 +84,28 @@ let evalMonkey monkeys (m_index, m) =
     |> List.mapi (fun i monkey ->
                   if i = m_index then purgeItems monkey
                   else monkey)
-    
-let rec evalMonkeys index (monkeys: list<Monkey>) =
-    if index >= monkeys.Length then
-        monkeys
-    else
-        evalMonkey monkeys (index, monkeys.[index])
-        |> evalMonkeys (index+1)
 
-"day11.testinput"
-|> readLines
-|> removeEmptyLines
-|> parseMonkeys []
-|> List.rev
+let addCounts counts index ammount =
+    counts
+    |> List.mapi (fun i x -> if i = index then x+ammount else x)
+    
+let rec evalMonkeys index (counts, (monkeys: list<Monkey>)) =
+    if index >= monkeys.Length then
+        (counts, monkeys)
+    else
+        let newMonkeys = evalMonkey monkeys (index, monkeys.[index])
+        evalMonkeys (index+1) (addCounts counts index monkeys.[index].items.Length, newMonkeys)
+
+let monkeys =
+    "day11.testinput"
+    |> readLines
+    |> removeEmptyLines
+    |> parseMonkeys []
+    |> List.rev
+
+let counts = [for x in 1..monkeys.Length -> 0]
+
+(counts, monkeys)
 |> printMonkeys
-|> evalMonkeys 0
+|> evalMonkeys 0 
 |> printMonkeys
