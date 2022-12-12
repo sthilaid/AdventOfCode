@@ -1,6 +1,6 @@
 open System.IO
 
-type Monkey = {items: list<int>; op: int -> int; test: int -> bool; positive: int; negative: int}
+type Monkey = {items: list<uint64>; op: uint64 -> uint64; test: uint64 -> bool; positive: uint64; negative: uint64}
 
 let readLines (filePath:string) = [
     use sr = new StreamReader (filePath)
@@ -24,26 +24,26 @@ let parseItems (line: string) =
                               |> Seq.toArray
                               |> (fun ar -> System.String ar)))
     |> Seq.skip 2
-    |> Seq.map (fun token -> int token)
+    |> Seq.map (fun token -> uint64 token)
     |> Seq.toList
     
 let parseOp (line: string) =
     let opData = line.Split [|' '|] |> purge |> Seq.toList
-    let getArg = fun x -> if opData.[5] = "old" then x else int opData.[5]
+    let getArg = fun x -> (if opData.[5] = "old" then x else uint64 opData.[5]) |> uint64
     match opData.[4] with
-    | "+" -> fun old -> old + (getArg old)
-    | "*" -> fun old -> old * (getArg old)
+    | "+" -> fun old -> (old + (getArg old))
+    | "*" -> fun old -> (old * (getArg old))
     | x ->
         printfn "MATCH ERROR: %A" x
         fun x -> x
 
 let parseTest (line: string) =
     let data = line.Split [|' '|] |> purge |> Seq.toList
-    let div = int data.[3]
-    fun x -> (x % div) = 0
+    let div: uint64 = data.[3] |> uint64
+    fun (x: uint64) -> (x % div) = 0UL
 
 let parsePosNeg (line: string) =
-    line.Split [|' '|] |> purge |> Seq.toList |> (fun x -> int x.[5])
+    line.Split [|' '|] |> purge |> Seq.toList |> (fun x -> uint64 x.[5])
 
 let rec parseMonkeys (monkeys: list<Monkey>) (lines: list<string>) =
     if lines.Length < 6 then
@@ -57,27 +57,34 @@ let rec parseMonkeys (monkeys: list<Monkey>) (lines: list<string>) =
         let monkey = {items=items; op=op; test=test; positive=pos; negative=neg}
         List.skip 6 lines |> parseMonkeys (monkey :: monkeys)
 
-let applyTest m worry =
+let applyTest m (worry: uint64) =
     if m.test worry then m.positive else m.negative
 
-let appendItem m item = {items=(item :: m.items); op=m.op; test=m.test; positive=m.positive; negative=m.negative}
+let appendItem m (item: uint64) = {items=(item :: m.items); op=m.op; test=m.test; positive=m.positive; negative=m.negative}
 let purgeItems m = {items=[]; op=m.op; test=m.test; positive=m.positive; negative=m.negative}
-let printMonkeys (counts, monkeys) =
+let printMonkeysWithCount (counts, monkeys) =
     List.mapi2 (fun i monkey count ->
                 printfn "monkey %d - items: %A - count: %d" i monkey.items count)
                monkeys
                counts
         |> ignore
     (counts, monkeys)
-    
-let evalMonkey monkeys (m_index, m) =
+
+let printMonkeys monkeys =
+    List.mapi2 (fun i monkey count ->
+                printfn "monkey %d - items: %A" i monkey.items)
+               monkeys
+        |> ignore
+    monkeys
+
+let evalMonkey worry_fun monkeys (m_index, m) =
     List.fold (fun monkeys item ->
                // printfn "%d - %d ---------------------------------------" m_index item
                // printMonkeys ([], monkeys) |> ignore
-               let newItemWorry = m.op item |> (fun x -> x/3) |> int
+               let newItemWorry: uint64 = m.op item |> worry_fun 
                let nextMonkey = applyTest m newItemWorry
                monkeys |> List.mapi (fun i monkey ->
-                                     if i = nextMonkey then appendItem monkey newItemWorry
+                                     if (uint64 i) = nextMonkey then appendItem monkey newItemWorry
                                      else monkey))
             monkeys
             m.items
@@ -87,14 +94,38 @@ let evalMonkey monkeys (m_index, m) =
 
 let addCounts counts index ammount =
     counts
-    |> List.mapi (fun i x -> if i = index then x+ammount else x)
+    |> List.mapi (fun i x -> if i = index then x + uint64(ammount) else x)
     
-let rec evalMonkeys index (counts, (monkeys: list<Monkey>)) =
+let rec evalMonkeys worry_fun index (counts, (monkeys: list<Monkey>)) =
     if index >= monkeys.Length then
         (counts, monkeys)
     else
-        let newMonkeys = evalMonkey monkeys (index, monkeys.[index])
-        evalMonkeys (index+1) (addCounts counts index monkeys.[index].items.Length, newMonkeys)
+        let newMonkeys = evalMonkey worry_fun monkeys (index, monkeys.[index])
+        evalMonkeys worry_fun (index+1) (addCounts counts index monkeys.[index].items.Length, newMonkeys)
+
+let rec runSimulation rounds worry_fun (monkeys: list<Monkey>) =
+    let rec run round (count, monkeys) =
+        if round = (rounds - 20) then
+            printfn "%d-------------------------------------------------------" round
+            (count, monkeys) |> printMonkeysWithCount |> ignore
+        
+        match round with
+            | 0 -> (count, monkeys)
+            | _ -> run (round-1) (evalMonkeys worry_fun 0 (count, monkeys))
+
+    let counts = [for x in 1..monkeys.Length -> 0UL]
+    run rounds (counts, monkeys)
+
+let part1_worry_manamgement (x: uint64) = (x/3UL) |> uint64
+let part2_worry_manamgement (x: uint64) = x |> uint64
+
+let print_result prelude (counts, monkeys) =
+    counts
+    |> List.fold (fun (max1, max2) x -> if x > max1 then (x, max1) elif x > max2 then (max1, x) else (max1, max2)) (0UL,0UL)
+    |> fun (max1,max2) ->
+        printfn "%A: %A*%A = %A" prelude max1 max2 (max1 * max2)
+        (counts, monkeys)
+                             
 
 let monkeys =
     "day11.testinput"
@@ -103,9 +134,14 @@ let monkeys =
     |> parseMonkeys []
     |> List.rev
 
-let counts = [for x in 1..monkeys.Length -> 0]
+monkeys
+|> runSimulation 20 part1_worry_manamgement
+|> printMonkeysWithCount
+|> print_result "part1"
 
-(counts, monkeys)
-|> printMonkeys
-|> evalMonkeys 0 
-|> printMonkeys
+printfn "**********************************"
+
+monkeys
+|> runSimulation 10000 part2_worry_manamgement
+|> printMonkeysWithCount
+|> print_result "part2"
