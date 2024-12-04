@@ -59,7 +59,6 @@
 (defun solve-part2 (vent-lines)
   (get-grid-count vent-lines (lambda (x y) t)))
 
-(defun parse-line (line-str))
 (defun solve (input-file)
   (let ((input-string (if (file-exists-p input-file)
                           (with-temp-buffer
