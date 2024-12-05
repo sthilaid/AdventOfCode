@@ -1,0 +1,72 @@
+(defmacro inc! (var) `(progn (setq ,var (+ ,var 1)) ,var))
+(defmacro let? (var val code) `(let ((,var ,val)) (and ,var ,code)))
+
+(defun parse (input)
+  (defun combine-rules (acc rule)
+    (or (let? combined-rule (assoc (car rule) acc)
+              (progn (setcdr combined-rule (append (cdr combined-rule) (list (elt rule 1))))
+                     acc))
+        (cons rule acc)))
+  (seq-let (allrules allpages) (split-string input "\n\n")
+    (let* ((rules (mapcar (lambda (s) (mapcar 'string-to-number (split-string s "|"))) (split-string allrules "\n")))
+           (updates (mapcar (lambda (s) (mapcar 'string-to-number (split-string s ","))) (split-string allpages "\n")))
+           (combined-rules (seq-reduce 'combine-rules rules '())))
+      (list combined-rules updates))))
+
+(defun is-ordered (pages rules)
+  (catch 'return
+    (let ((i 0) (count (length pages)))
+      (while (< i count)
+        (let* ((page (elt pages i))
+               (rule (assoc page rules))
+               (next-pages (seq-take pages i)))
+          (if (seq-intersection (cdr rule) next-pages)
+              (throw 'return nil))
+          (inc! i))))
+    t))
+
+(defun pick-mid (pages)
+    (if (= (% (length pages) 2) 0) (error "even number of pages in update %s" pages))
+    (elt pages (/ (length pages) 2)))
+
+(defun solve1 (parsed-input)
+  (seq-let (rules updates) parsed-input
+    (let ((valid-updates (seq-filter (lambda (pages) (is-ordered pages rules))
+                                     updates)))
+      (seq-reduce '+ (mapcar 'pick-mid valid-updates) 0))))
+
+(defun fix-update (pages rules)
+  (let ((fixed-pages '()))
+    (while pages
+      (setq rules (seq-filter (lambda (rule) (member (car rule) pages))
+                              rules))
+      (let ((free-page (seq-filter (lambda (page) (not (seq-find (lambda (rule) (member page (cdr rule)))
+                                                                 rules)))
+                                   pages)))
+        (if (not (= (length free-page) 1)) (error "free-page: " free-page))
+        (push (car free-page) fixed-pages)
+        (setq pages (delete (car free-page) pages))))
+    fixed-pages))
+
+(defun solve2 (parsed-input)
+  (seq-let (rules updates) parsed-input
+    (let ((invalid-updates (seq-filter (lambda (pages) (not (is-ordered pages rules)))
+                                       updates)))
+      (let ((fixed-updates (mapcar (lambda (pages) (fix-update pages rules)) invalid-updates)))
+        (seq-reduce '+ (mapcar 'pick-mid fixed-updates) 0)))))
+
+(defun solve (input-file)
+  (defun current-line () (buffer-substring-no-properties (line-beginning-position) (line-end-position)))
+  (let* ((input (if (file-exists-p input-file)
+                    (with-temp-buffer (insert-file-contents input-file)
+                                      (buffer-string))
+                  (error "Could not find file %s" input-file))))
+    (let* ((parsed-input (parse input))
+           (part1 (solve1 parsed-input))
+           (part2 (solve2 parsed-input)))
+      (message "part1: %s | part2: %s" part1 part2))))
+
+(let* ((read-answer-short t)
+       (answer (read-answer "run testinput or input?" '(("testinput" ?t "run test input") ("input" ?i "run input")))))
+  (solve (concat (file-name-base (file-name-nondirectory (buffer-file-name (current-buffer)))) "." answer)))
+
