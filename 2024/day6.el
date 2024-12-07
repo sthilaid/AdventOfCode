@@ -1,11 +1,12 @@
 (defmacro inc! (var) `(progn (setq ,var (+ ,var 1)) ,var))
 (defmacro dec! (var) `(progn (setq ,var (- ,var 1)) ,var))
+(defmacro let? (var val code) `(let ((,var ,val)) (and ,var ,code)))
 (defmacro for (bindings comp inc result &rest body)
   `(let ,bindings
      (catch 'break
        (while ,comp
-          ,@body
-          ,inc))
+         ,@body
+         ,inc))
      ,result))
 
 (defun parse (input)
@@ -22,8 +23,8 @@
              (if (not (eq c ?\n)) (inc! j))))
       (list w h level start))))
 
+(defun validate (i min max) (if (or (< i min) (> i max)) nil i))
 (defun i-to-coord (i w h)
-  (defun validate (i min max) (if (or (< i min) (> i max)) nil i))
   (let ((x (mod i w)) (y (/ i w)))
     (list (validate x 0 w) (validate y 0 h))))
 
@@ -75,6 +76,10 @@
     ;;(message-level level w h)
     (seq-count (lambda (x) (and x (> x 0))) level)))
 
+;; (defun exists-within (pred seq &optional start end)
+;;   (catch 'ret (for ((i (or start 0))) (< i (or end (length seq))) (inc! i) nil
+;;                    (if (funcall pred (elt seq i)) (throw 'ret t)))))
+
 (defun solve2 (parsed-input)
   (seq-let (w h level pos) parsed-input
     (let* ((dx 0) (dy -1) (path `((,pos ,dx ,dy))))
@@ -85,7 +90,8 @@
           (setq pos new-pos)
           (setq dx new-dx)
           (setq dy new-dy)))
-      (let ((search-path (seq-into (cdr (reverse (cdr path))) 'vector))
+      
+      (let ((search-path (cdr (reverse (cdr path))))
             (blockers '()))
         (for ((i 0)) (< i (length search-path)) (inc! i) nil
              (message "%d / %d" i (length search-path))
@@ -95,16 +101,19 @@
                    (if (and blocker-pos
                             (aref level (car blocker-pos)))
                        (seq-let (rdx rdy) (rotate dx dy)
-                         (let ((next `(,pos ,rdx ,rdy)))
+                         (let ((next `(,pos ,rdx ,rdy))
+                               (search-map (make-vector (* w h) nil)))
+                           (seq-doseq (p (seq-subseq search-path 0 i)) (aset search-map (car p) (list (cons (elt p 1) (elt p 2)))))
                            (catch 'break
                              (while next
-                               (if (seq-find (lambda (x) (equal x next)) (seq-take search-path i)) ;; change this to iterate in the search path vector
+                               (if (let? search-vals (aref search-map (car next))
+                                         (seq-find (lambda (x) (and (= (car x) (cadr next)) (= (cdr x) (caddr next)))) search-vals))
                                    (progn (push blocker-pos blockers)
                                           (throw 'break nil))
                                  (seq-let (next-pos next-dx next-dy) next
+                                   (aset search-map (car next) (cons (cons (cadr next) (caddr next)) (aref search-map (car next))))
                                    (setq next (advance level next-pos next-dx next-dy w h)))))))))))))
-        (message-level level w h blockers)
-        ;(mapcar (lambda (b) (i-to-coord (car b) w h)) blockers)
+        ;;(message-level level w h blockers)
         (length blockers)))))
 
 (defun solve (input-file)
