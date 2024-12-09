@@ -114,7 +114,7 @@
                                    (aset search-map (car next) (cons (cons (cadr next) (caddr next)) (aref search-map (car next))))
                                    (setq next (advance level next-pos next-dx next-dy w h)))))))))))))
         ;;(message-level level w h blockers)
-        (length blockers)))))
+        (length (seq-uniq blockers))))))
 
 (defun solve (input-file)
   (defun current-line () (buffer-substring-no-properties (line-beginning-position) (line-end-position)))
