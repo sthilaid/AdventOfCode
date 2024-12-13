@@ -47,7 +47,7 @@
        (>= y 0) (< y h)))
 
 (defun accumulate-region (i v garden w h)
-  (message "%s" `(accumulate-region ,i ,v))
+  ;;(message "%s" `(accumulate-region ,i ,v))
   (defun is-in-region (x y) (and (is-valid? x y w h)
                                  (eq v (aref garden (xy-to-i x y w h)))))
   (defmacro try-explore (dx dy)
@@ -59,10 +59,10 @@
              (and (not (memq new-i region))
                   (progn (push new-i region)
                          (push new-i to-explore))))
-         (progn (message "i: %s (%s, %s)new-i: %s (%s,%s) | perimeter: %d" (xy-to-i x y w h) x y (xy-to-i new-x new-y w h) new-x new-y perimeter)
+         (progn ;;(message "i: %s (%s, %s)new-i: %s (%s,%s) | perimeter: %d" (xy-to-i x y w h) x y (xy-to-i new-x new-y w h) new-x new-y perimeter)
                 (inc! perimeter)))))
   
-  (let ((region nil)
+  (let ((region (list i))
         (to-explore (list i))
         (perimeter 0))
     (while to-explore
@@ -85,7 +85,8 @@
                                   (seq-let (region region-perimiter) (car region-infos)
                                     (inc! total (* region-perimiter (length region)))))))
       total
-      region-infos)))
+      ;region-infos
+      )))
 
 (defun solve2 (parsed-input)
   nil)
