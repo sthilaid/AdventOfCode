@@ -28,7 +28,7 @@
 ;;                                                           to-num
 ;;                                                           (if (is-invalid? from) (cons from-num inv) inv))))))))))
 
-(defun accumulate-invalids (inputs invalids is-invalid?)
+(defun accumulate-invalids (inputs invalids test-fun?)
   (if (not inputs)
       ;(seq-reduce '+ invalids 0)
       invalids
@@ -39,8 +39,8 @@
                                                    (inv '()))
                                      (if (> from to)
                                          inv
-                                       (for (1+ from) to (if (funcall is-invalid? from) (cons from inv) inv)))))
-                           (symbol-function 'is-invalid?))))
+                                       (for (1+ from) to (if (funcall test-fun? from) (cons from inv) inv)))))
+                           test-fun?)))
 
 (defun solve1 (inputs)
   (defun is-invalid? (x)
@@ -67,15 +67,18 @@
       (if (> i (/ digit-count 2))
           nil
         (let ((pat (split-num x i)))
-          (and (not (= (car pat) x))
-               (or (named-let repeats? ((pat (car pat))
-                                        (rest (cadr pat)))
-                     (or (not rest)
-                         (let ((split (split-num rest i)))
-                           (and split
-                                (= pat (car split))
-                                (repeats? pat (cadr split))))))
-                   (for (1+ i)))))))))
+          (or (named-let repeats? ((pat (car pat))
+                                   (rest (cadr pat)))
+                (or (not rest)
+                    (let ((split (split-num rest i)))
+                      (or (and (not split)
+                               (= pat rest))
+                          (and split
+                               (= pat (car split))
+                               (repeats? pat (cadr split)))))))
+              (for (1+ i))))))))
+
+;; todo - fix problem with zeros being voided, like in (is-invalid-2? 1000001)
 
 (defun solve2 (inputs)
   (accumulate-invalids inputs '() (symbol-function 'is-invalid-2?)))

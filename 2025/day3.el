@@ -1,0 +1,60 @@
+;;; ...  -*- lexical-binding: t -*-
+
+(defun parse (input)
+  (split-string input "\n"))
+
+(defun find-in-interval (comp init seq start end)
+  (named-let for ((i start)
+                  (acc init))
+    (if (>= i end)
+        acc
+      (for (1+ i) (funcall comp acc (elt seq i))))))
+
+(defun solve1 (banks)
+  (let ((banks-power (mapcar (lambda (bank)
+                               (let* ((bank-size (length bank))
+                                      (ten-unit (find-in-interval 'max 0 bank 0 (1- bank-size)))
+                                      (ten-unit-idx (seq-position bank ten-unit))
+                                      (unit (find-in-interval 'max 0 bank (1+ ten-unit-idx) bank-size)))
+                                 (+ (* 10 (- ten-unit ?0)) (- unit ?0))))
+                             banks)))
+    (seq-reduce '+ banks-power 0)))
+
+(defun pos-in-interval (seq target start end)
+    (named-let for ((i start))
+      (cond ((>= i end) (error "%s not found" target))
+            ((= (elt seq i) target) i)
+            (t (for (1+ i))))))
+
+(defun get-max-bank-power (bat-count bank)
+  (let* ((bank-size (length bank)))
+    (named-let add-batery ((digit-pos (1- bat-count))
+                           (bat-index-start 0)
+                           (power 0))
+      (if (< digit-pos 0)
+          power
+        (let ((bat-power (find-in-interval 'max 0 bank bat-index-start (- bank-size digit-pos))))
+          (add-batery (1- digit-pos)
+                      (1+ (pos-in-interval bank bat-power bat-index-start bank-size))
+                      (+ power (* (expt 10 digit-pos) (- bat-power ?0)))))))))
+
+(defun solve2 (banks)
+  (let ((banks-power (mapcar (apply-partially 'get-max-bank-power 12) banks)))
+    (seq-reduce '+ banks-power 0)))
+
+(defun solve (input-file)
+  (let* ((input (if (file-exists-p input-file)
+                    (with-temp-buffer (insert-file-contents input-file)
+                                      (buffer-string))
+                  (error "Could not find file %s" input-file))))
+    (let* ((now (float-time))
+           (parsed-input (parse input))
+           (part1 (solve1 parsed-input))
+           (part2 (solve2 parsed-input)))
+      (message "part1: %s | part2: %s (evaluated in %.3f sec)" part1 part2 (- (float-time) now)))))
+
+(let* ((read-answer-short t)
+       (answer (read-answer "run testinput or input?" '(("testinput" ?t "run test input") ("input" ?i "run input")))))
+  (let ((w (if (string= answer "testinput") 11 101))
+        (h (if (string= answer "testinput") 7 103)))
+    (solve (concat (file-name-base (file-name-nondirectory (buffer-file-name (current-buffer)))) "." answer))))
